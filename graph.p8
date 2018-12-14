@@ -7,6 +7,7 @@ local p={2,0}
 local d={14,5}
 local cst="unknown"
 local edges={}
+local path={}
 function _init()
  g=map2graph()
 end
@@ -24,7 +25,7 @@ function _update()
   end
   
   if btnp(4) then
-    astar(g,
+    path = astar(g,
      cell2idx(p[1],p[2]),
      cell2idx(d[1],d[2])
     )
@@ -59,10 +60,30 @@ function _draw()
     i+=1
     --print( e, 4, 60,12)
   end
-  print(cell2idx(p[1],p[2]),120,60,5)
-  
+  -- current position
+  print(cell2idx(p[1],p[2]),100,60,5)
+  drawpath(path,12)
+  print(tablestr(path),0,80)
   -- debug
   print(cst,4,120,11)
+end
+
+
+
+function drawpath(path,col)
+  for p in all(path) do
+    local c=idx2cell(p)
+    local pos=cell2mxy(c[1],c[2])
+    circ(pos[1],pos[2],2,col)
+  end
+end
+
+function tablestr(t)
+  s=""
+  for e in all(t) do
+    s = s .. tostr(e) .. ","
+  end
+  return s
 end
 -->8
 -- graph
@@ -138,7 +159,10 @@ function astar(g,start,goal)
   fscore[start]=heur(start,goal)
   
   while #open != 0 do
-    local cur= lowest(fscore)
+    printh("n-open: " .. #open)
+    local cur= lowest(fscore,open)
+    printh("\t" .. cur)
+
     if cur == goal then
       return reconstruct_path(camefrom,cur)
     end
@@ -149,22 +173,25 @@ function astar(g,start,goal)
       repeat
       
       if has_value(closed,n) then
-        break
+        --printh("bail visited: " .. n)
+        do break end
       end
       
       local tgs = gscore[cur] +
                   distance(cur,n)
       if not has_value(open,n) then
-      	 add(open,n)
-      elseif tgs >= gscore[n] then
-        break
+        printh("add open: " .. n)
+      	 add(open,n)      
+      elseif (gscore[n]!=nil and tgs >= gscore[n]) then
+        printh("bail gscore")
+        do break end
       end
       
       camefrom[n]= cur
       gscore[n] = tgs
       fscore[n] = gscore[n]+heur(n,goal)
       
-      	 
+      printh(cur)     	 
       until true
       
     end
@@ -172,6 +199,15 @@ function astar(g,start,goal)
    
   end
 
+end
+
+function reconstruct_path(camefrom, current)
+  local total_path = {current}
+  while camefrom[current] do
+    current = camefrom[current]
+    add(total_path,current)
+  end
+  return total_path
 end
 
 function heur(s,e)
@@ -189,13 +225,16 @@ function distance(s,e)
   return sqrt( heur(s,e) )
 end
 
-function lowest(t)
+function lowest(t,open)
   local low=30000
   local result=nil
-  for k,v in pairs(t) do
-    if v < low then
-      low = v
-      result = k
+  for k in all(open) do
+    local v = t[k]
+    if v != nil then
+      if v < low then
+        low = v
+        result = k
+      end
     end
   end
   return result
@@ -226,6 +265,6 @@ __map__
 0506040f050700030502020c0e02070000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 030d0f0d04010201070000000300030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0502040202070003030000000502070000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-030000000e010204010f00000300030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+030000000e010204040f00000300030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 03000e020c030000000d020204020c0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0d020402020c0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
