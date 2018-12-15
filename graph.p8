@@ -43,7 +43,7 @@ function _update()
   
   
   -- compute path
-  if btn(4) then
+  if btnp(4) then
     enemy.step=true
   end
   
@@ -338,19 +338,22 @@ update=function(t)
     t.tk=0
   end
 
-  
 
-  
   local st_idx=cell2idx(t.cx,t.cy)
-  -- follow path or stabilize on current tile
-  local tgt_idx
+  -- follow path or stabilize
+  -- on current tile
+  if t.path[#t.path]==st_idx then
+    del(t.path,st_idx)
+  end  
+
   if #t.path!=0 then
-    tgt_idx=t.path[#t.path]
     t.state="on-path"
   else
-    tgt_idx=st_idx
+    add(t.path,st_idx)
     t.state="on-tgt"
   end
+  local tgt_idx=t.path[#t.path]
+
   local tgt = idx2cell(tgt_idx)  
   -- change dv to point to 
   -- next path point
@@ -387,14 +390,16 @@ update=function(t)
   -- remove it from path
   if t.pos[1]==tgt_pos[1]
   and t.pos[2]==tgt_pos[2] then
-    del(t.path,tgt_idx)
+    del(t.path,new_idx)
     t.state=t.state .. "-n"
   end
-  
+
   t.cx=new_cell[1]
   t.cy=new_cell[2]
   
-
+  if #t.path==0 then
+    add(t.path,new_idx)
+  end
   
 end,
 draw=function(t)
@@ -404,6 +409,11 @@ draw_debug=function(t)
   print(t.cx .. "," .. t.cy,
     100,74,14
   )
+  local n_cell=idx2cell(t.path[#t.path])
+  print(n_cell[1] .. ","
+    .. n_cell[2],
+    104,80,15
+  )
   print(t.pos[1] .. "," .. t.pos[2],
     100,84,14
   )
@@ -412,7 +422,7 @@ draw_debug=function(t)
   )
   print(t.state , 90,104,14)
   print(t.tk,100,114,14)
-  drawpath(t.path,14)
+  drawpath(t.path,7)
   
   fillp(0b10100101010100101.1)
 
@@ -432,6 +442,7 @@ e.new=function(cx,cy)
   t.path={cell2idx(cx,cy)}
   t.state="init"
   setmetatable(t,e)
+  t:seek()
   return t
 end
 
