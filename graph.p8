@@ -36,16 +36,15 @@ function _update()
   local from = cell2idx(lp[1],lp[2])
   local to = cell2idx(p[1],p[2])
   local moves = g[from]
+  -- not a legal move
   if not has_value(moves,to) then
     p=lp
   end
   
+  
   -- compute path
-  if btnp(4) then
-    path = astar(g,
-     cell2idx(p[1],p[2]),
-     cell2idx(d[1],d[2])
-    )
+  if btn(4) then
+    enemy.step=true
   end
   
   -- reset target
@@ -81,7 +80,8 @@ function _draw()
   
 
   drawpath(path,12)
-  drawpath(enemy.path,5)
+  
+  enemy:draw_debug()
 
 end
 
@@ -154,6 +154,12 @@ function xy2cell(x,y)
   }
 end
 
+function mxy2cell(x,y)
+  return {
+    flr((x-4)/8),flr((y-4)/8)
+  }
+end
+
 function map2graph()
   local g={}
   for cx = 0,127 do
@@ -200,10 +206,8 @@ function astar(g,start,goal)
   fscore[start]=heur(start,goal)
   
   while #open != 0 do
-    printh("n-open: " .. #open)
     local cur= lowest(fscore,open)
-    printh("\t" .. cur)
-
+  
     if cur == goal then
       return reconstruct_path(camefrom,cur)
     end
@@ -213,18 +217,19 @@ function astar(g,start,goal)
     for n in all(g[cur]) do
       repeat
       
+      -- already visited
       if has_value(closed,n) then
-        --printh("bail visited: " .. n)
         do break end
       end
       
       local tgs = gscore[cur] +
                   distance(cur,n)
       if not has_value(open,n) then
-        printh("add open: " .. n)
+        --printh("add open: " .. n)
       	 add(open,n)      
       elseif (gscore[n]!=nil and tgs >= gscore[n]) then
-        printh("bail gscore")
+        -- does this ever happen?
+        --printh("bail gscore")
         do break end
       end
       
@@ -232,14 +237,14 @@ function astar(g,start,goal)
       gscore[n] = tgs
       fscore[n] = gscore[n]+heur(n,goal)
       
-      printh(cur)     	 
       until true
       
     end
   
    
   end
-
+  printh("bailout a* fall thru")
+  return {}
 end
 
 function reconstruct_path(camefrom, current)
@@ -312,47 +317,177 @@ end
 -->8
 -- enemies
 local e_m={
+seek=function(t)
+    local st = cell2idx(t.cx,t.cy)
+    local gl = cell2idx(d[1],d[2])
+    t.path = astar(g,st,gl)
+end,
 update=function(t)
+
+  -- debugging
+  if not t.step then
+    return
+  end
+  t.step=false
+
+  -- every tm ticks, 
+  -- check path/target
   t.tk+=1
   if t.tk>t.tm then
-    local st = cell2idx(t.cx,t.cy)
-    local gl = cell2idx(p[1],p[2])
-    t.path = astar(g,st,gl)
+    t:seek()
     t.tk=0
   end
+
   
-  local tgt_idx=t.path[#t.path]
-  local tgt = idx2cell(tgt_idx)
-  t.cx=tgt[1]
-  t.cy=tgt[2]
-  del(t.path,tgt_idx)
+
   
-  if #t.path==0 then
-    add(t.path,cell2idx(t.cx,t.cy))
+  local st_idx=cell2idx(t.cx,t.cy)
+  -- follow path or stabilize on current tile
+  local tgt_idx
+  if #t.path!=0 then
+    tgt_idx=t.path[#t.path]
+    t.state="on-path"
+  else
+    tgt_idx=st_idx
+    t.state="on-tgt"
   end
+  local tgt = idx2cell(tgt_idx)  
+  -- change dv to point to 
+  -- next path point
+  local tgt_pos=cell2mxy(tgt[1],tgt[2])
+  
+  local dx=(t.pos[1]-tgt_pos[1])
+  local dy=(t.pos[2]-tgt_pos[2])
+  if dx<0 then
+    t.dv[1] = -1
+  elseif dx>0 then
+    t.dv[1] = 1
+  else
+    t.dv[1] = 0
+  end
+  if dy<0 then
+    t.dv[2] = -1
+  elseif dy>0 then
+    t.dv[2] = 1
+  else
+    t.dv[2] = 0
+  end
+  
+  
+  -- move positon by dv
+  t.pos[1]-=t.dv[1]
+  t.pos[2]-=t.dv[2]
+  
+  -- where are we now?
+  -- update our cell
+  local new_cell=mxy2cell(t.pos[1],t.pos[2])
+  local new_idx=cell2idx(new_cell[1],new_cell[2])
+  
+  -- if we've reached this step
+  -- remove it from path
+  if t.pos[1]==tgt_pos[1]
+  and t.pos[2]==tgt_pos[2] then
+    del(t.path,tgt_idx)
+    t.state=t.state .. "-n"
+  end
+  
+  t.cx=new_cell[1]
+  t.cy=new_cell[2]
+  
+
   
 end,
 draw=function(t)
-  local p=cell2xy(t.cx,t.cy)
-  spr(64,p[1],p[2])
+  spr(64,t.pos[1]-4,t.pos[2]-4)
+end,
+draw_debug=function(t)
+  print(t.cx .. "," .. t.cy,
+    100,74,14
+  )
+  print(t.pos[1] .. "," .. t.pos[2],
+    100,84,14
+  )
+  print(t.dv[1] .. "," .. t.dv[2],
+    100,94,14
+  )
+  print(t.state , 90,104,14)
+  print(t.tk,100,114,14)
+  drawpath(t.path,14)
+  
+  fillp(0b10100101010100101.1)
+
+
 end
 }
 
 e={}
 e.new=function(cx,cy)
   local t={cx=cx,cy=cy}
-  t.vx=0
-  t.vy=0
+  local pos=cell2mxy(cx,cy)
+  t.dv={0,0}
+  t.pos=pos
   t.tk=0
   t.tm=45
   
   t.path={cell2idx(cx,cy)}
+  t.state="init"
   setmetatable(t,e)
   return t
 end
 
 e.__index=e_m
 
+-->8
+local p_m={
+update=function(p)
+  local lp={p.cell[1],p.cell[2]}
+  if btnp(0) then
+    p.cell[1]-=1
+  elseif btnp(1) then
+    p.cell[1]+=1
+  end
+  if btnp(2) then
+    p.cell[2]-=1
+  elseif btnp(3) then
+    p.cell[2]+=1
+  end
+  
+  -- can we move there?
+  local from = cell2idx(lp[1],lp[2])
+  local to = cell2idx(p.cell[1],p.cell[2])
+  local moves = g[from]
+  -- not a legal move
+  if not has_value(moves,to) then
+    p.cell=lp
+  end
+  
+  
+  -- compute path
+  if btnp(4) then
+    path = astar(g,
+     cell2idx(p.cell[1],p.cell[2]),
+     cell2idx(d[1],d[2])
+    )
+  end
+  
+  -- reset target
+  if btnp(5) then
+    d={p.cell[1],p.cell[2]}
+  end
+end,
+draw=function(t)
+
+end,
+}
+local pl={}
+pl.__index = p_m
+pl.new=function(cx,cy)
+  local t={}
+  t.cell={cx,cy}
+  t.dv={0,0}
+  setmetatable(t,pl)
+  return t
+end
 __gfx__
 000aa000000aa00000000000000aa000000aa000000aa00000000000000aa0000000000000000000000aa00000077000000aa000000aa0000000000000000000
 00000000000110000000000000011000000110000001100000000000000110000000000000000000000110000001100000011000000110000000000000000000
