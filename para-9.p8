@@ -10,12 +10,29 @@ local d_pal=dark1
 local hz=50
 local coll
 local player
+local shakev = 100
+local shakemax=100
+local shakevec={0,0}
 
 local debug=true
 local debug_coll=false
 local debug_flash=14
 local profile={}
 
+function shake(val)
+  shakev += val
+end
+
+function scamera(x,y)
+ if (x==nil) then
+   camera()
+   return
+ end
+ camera( 
+    x + ( shakevec[1] - (shakevec[1]/2 ))  
+    , y + ( shakevec[2] - (shakevec[2]/2))
+ )
+end
 
 function _init()
  music(0,30)
@@ -24,6 +41,13 @@ end
 
 
 function _update()
+ if shakev < 1 then
+   shakevec={0,0}
+ else
+  shakev -= 1
+  local sm = min(shakev,shakemax)
+  shakevec= {rnd(sm) , rnd(sm)}
+ end
 
  profile.coll = stat(1)
  update_coll()
@@ -169,7 +193,7 @@ function draw_l4(h,off)
  off = off or 16
  
  
- camera(l1.x,0)
+ scamera(l1.x,0)
  mapdraw(0,0,0,h-off,128,2)
  mapdraw(0,0,128*8,h-off,128,2)
 
@@ -178,7 +202,7 @@ end
 
 function draw_l3(h,off)
  off = off or 3
- camera(l2.x,0)
+ scamera(l2.x,0)
  mapdraw(0,2,0,h-off,128,2)
  mapdraw(0,2,128*8,h-off,128,2)
  
@@ -186,7 +210,7 @@ end
 
 function draw_l2(h,off)
  off=off or 10
- camera(l3.x,0)
+ scamera(l3.x,0)
  palt(0,false)
  palt(8,true)
  
@@ -195,12 +219,12 @@ function draw_l2(h,off)
  
  palt(0,true)
  palt(8,false)
- camera()
+ scamera()
 end
 
 function draw_l1(h,off)
  off = off or 28
- camera(l4.x,0)
+ scamera(l4.x,0)
  mapdraw(0,7,0,h+off,16,1)
  mapdraw(0,7,128,h+off,16,1)
 end
@@ -209,7 +233,7 @@ function draw_scene()
 
  profile.scene = stat(1)
  -- sky
- camera()
+ scamera()
  draw_sky(hz)
 
  -- grass from horizon to dirt
@@ -230,7 +254,7 @@ function draw_scene()
  draw_l1(hz)
  
  -- end paralax
- camera()
+ scamera()
  player:draw()
  
  for w in all(weps) do
@@ -259,7 +283,7 @@ end
 function draw_ref_scene()
  profile.ref_scene = stat(1)
  
- camera()
+ scamera()
  local rh=60
  draw_sky(rh)
  draw_grass(rh,15)
@@ -669,7 +693,7 @@ pl={
    
  end,
  draw=function(t)
- camera()
+ scamera()
  spr( t.tframe[ t.turn ],
   t.pos.x-8, t.pos.y-8,
   2,2
@@ -885,6 +909,7 @@ wrk={}
 wrk={
  new=function(pos,dv)
   local p={}
+  shakev+=5
   -- debris
   for i=5,5+flr(rnd(5)) do
    local dir = (i%2)-0.5
