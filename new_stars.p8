@@ -38,8 +38,11 @@ end
 function _draw()
  cls()
  camera(cx,cy)
- draw_stars(cx,cy)
-
+ draw_stars(cx,cy,4478,128)
+ camera(cx*1.25,cy*1.25)
+ draw_stars(cx*1.25,cy*1.25,8086,256)
+ camera(cx*1.5,cy*1.5)
+ draw_stars(cx*1.5,cy*1.5,16,512)
 end
 -->8
 -- background
@@ -58,7 +61,7 @@ function tts(t)
   return s
 end
 
-function draw_stars(x,y)
+function draw_stars(x,y,base,ds)
  local grps={
    {x-128,y-128},
    {x,y-128},
@@ -73,21 +76,22 @@ function draw_stars(x,y)
  local mn=0
  local mx=128*128
  for p in all(grps) do
-  --if p[1]<mn or p[1]>mx then break end
-  --if p[2]<mn or p[2]>mx then break end
+  repeat
+  if p[1]<mn or p[1]>mx then break end
+  if p[2]<mn or p[2]>mx then break end
   
   local cell=xy2starcell(p[1],p[2])
   local clx=cell[1]*128
   local cly=cell[2]*128
   local seed=shl(13,cell[1])
             +cell[2]
+  seed=bxor(base,seed)
   srand(seed)
-  camera()
-  print(tts(cell),0,0,5)
-  camera(cx,cy)
+
+
   
   local sz=128*128
-  local density=128
+  local density=ds or 256
   local nxt=0
   while nxt<sz do
     local step=flr(rnd(density))
@@ -101,5 +105,6 @@ function draw_stars(x,y)
     
     pset(clx+x,cly+y,col) 
   end
+  until true -- loop break next
  end
 end
