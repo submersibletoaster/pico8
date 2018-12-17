@@ -53,14 +53,6 @@ function xy2starcell(x,y)
   return {cx,cy}
 end
 
-function tts(t)
-  local s=""
-  for v in all(t) do
-    s=s .. v .. ","
-  end
-  return s
-end
-
 function draw_stars(x,y,base,ds)
  local grps={
    {x-128,y-128},
