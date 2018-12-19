@@ -81,6 +81,7 @@ function _draw()
   
   draw_map()
   -- player
+  clip()
   local pos=cell2mxy(p[1],p[2])
   circ(pos[1],pos[2],5,10)
   pset(pos[1],pos[2],15)
@@ -91,7 +92,7 @@ function _draw()
   pset(pos[1],pos[2],9)
   
   -- enemy
-  enemy:draw()
+  --enemy:draw()
   
 
   --drawpath(path,12)
@@ -104,10 +105,33 @@ function draw_map()
   -- map , w/ opaque parts
   pal()
   camera(cam[1],cam[2])
+  pal(5,0)
+  palt(0,true)
+  map(0,0,0,0,128,32)
+  palt(5,true)
+  map(0,0,0,-1,128,32)
+  map(0,0,0,-2,128,32)
+    
   for y=0,32 do
-    pal(5,0)
-    map(0,y,0,y*8,128,1)
-    pal()
+    clip()
+    palt(5,true)
+    map(0,y,0,(y*8)-1,128,1)
+    map(0,y,0,(y*8)-2,128,1)
+    if enemy.cy==y then
+      palt()
+      clip(0,0,128,(y*8)+4)
+      enemy:draw()
+    end
+    if enemy.cy+1==y then
+      clip(0,(y*8)+4,128,128)
+     enemy:draw()
+    end
+    clip(0,(y*8)+5,128,128)
+    palt(5,true)
+    map(0,y,0,(y*8)-1,128,1)
+    map(0,y,0,(y*8)-2,128,1)
+
+    
   end
 end
 
