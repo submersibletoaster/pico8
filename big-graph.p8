@@ -63,6 +63,8 @@ function _draw()
 
   drawpath(path,12)
   
+  camera()
+  p:draw_debug()
   --enemy:draw_debug()
   -- blackout dark green
   
@@ -85,9 +87,13 @@ function draw_map()
   palt(0,true)
   map(0,0,0,0,128,32)
 
-  pickups:draw()
   p:draw_refl()
   enemy:draw_refl()
+  pickups:draw_refl()
+  
+  pal()
+  palt()
+  pickups:draw()
   
   
   pal()
@@ -607,6 +613,7 @@ end
 e.__index=e_m
 
 -->8
+-- player
 local p_m={
 update=function(p)
   p.tk+=1
@@ -702,7 +709,11 @@ draw_refl=function(t)
     1,1,
     p.flp,true
   )
-end
+end,
+draw_debug=function(t)
+  local i =cell2idx(t.cell[1],t.cell[2])
+  print(i,4,120,7)
+end,
 }
 pl={}
 pl.new=function(cx,cy)
@@ -742,7 +753,8 @@ end
 
 -->8
 pwrup={
-  257,258,259,260,261,262
+  257,258,259,260,261,262,
+  2081
 }
 -- pickups
 pu_methods={
@@ -777,17 +789,26 @@ draw=function(t)
     if v==true then
       spr(82,pos[1]-4,pos[2]-4)
     else
-     rectfill(
+     circfill(pos[1],pos[2],
+       1,1
+     )
+     pset(
        pos[1],pos[2],
-       pos[1]+1,pos[2]+1,
        t.shimmer[t.tk]
      )
     end
   end
+end,
+draw_refl=function(t)
+  for n,v in pairs(t.p) do
+    local cell=idx2cell(n)
+    local pos=cell2mxy(cell[1],cell[2])
+    if v==true then
+      spr(82,pos[1]-4,pos[2]+2,1,1,false,true)
+    end
+  end
+end,
 
-end
-
- 
 }
 pickup={}
 pickup.__index = pu_methods
