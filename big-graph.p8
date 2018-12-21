@@ -6,17 +6,30 @@ local g={}
 --local p={2,1}
 p={}
 pickups={}
+enemies={}
 local d={8,6}
 local cam={0,0}
 local ct={0,0}
 local cst="unknown"
 local edges={}
 local path={}
-local enemy={}
 function _init()
  g=map2graph()
  p=pl.new(2,1)
- enemy=e.new(5,1)
+ local starts={}
+ for k,v in pairs(g) do
+   if #v>0 then
+     add(starts,k)
+   end
+ end
+ for col in all({8,14,15,12}) do
+   local cell=idx2cell(
+      starts[1+flr(rnd(#starts))]
+   )
+   enemy=e.new(cell[1],cell[2],col)
+   add(enemies,enemy)
+   
+ end
  pickups=pickup.new()
  pickups:init()
 end
@@ -24,7 +37,9 @@ end
 function _update()
 
   pickups:update()
-  enemy:update()
+  for e in all(enemies) do
+    e:update()
+  end
   p:update()
 
 
@@ -62,12 +77,15 @@ function _draw()
     
 
   drawpath(path,12)
+
+  --for e in all(enemies) do
+  --  e:draw_debug()
+  --end
   
   camera()
   p:draw_debug()
-  --enemy:draw_debug()
-  -- blackout dark green
-  
+
+  -- blackout dark green  
   pal(3,0,1)
 end
 
@@ -88,7 +106,9 @@ function draw_map()
   map(0,0,0,0,128,32)
 
   p:draw_refl()
-  enemy:draw_refl()
+  for e in all(enemies) do
+    e:draw_refl()
+  end
   pickups:draw_refl()
   
   pal()
@@ -98,7 +118,9 @@ function draw_map()
   
   pal()
   palt()
-  enemy:draw()
+  for e in all(enemies) do
+    e:draw()
+  end
   p:draw()
 
 
@@ -230,7 +252,7 @@ function map2graph()
         local n= cell2idx(cx,cy-1)
         add(g[n],idx)
       end
-      if fget(s,3)==true then
+      if fget(s,3) then
         local n = cell2idx(cx,cy+1)
         add(g[n],idx)
       end
@@ -468,7 +490,7 @@ seek=function(t)
     )
     t.path = astar(g,t.mg,gl)
 end,
-update=function(t)
+update=function(t,p)
 
   -- every tm ticks, 
   -- check path/target
@@ -552,8 +574,9 @@ draw=function(t)
   local eye_idx=1+ bxor(
     gd[1], shl(gd[2],1)
   )
-  
-  
+
+  -- override col  
+  pal(14,t.col)
   apply_idx_pal(
     eye_pal_idx[eye_idx]
   )
@@ -562,6 +585,8 @@ draw=function(t)
 end,
 draw_refl=function(t)
   apply_pal(drk_pal)
+  pal(14,drk_pal[t.col+1])
+  
   spr(64,t.pos[1]-4,t.pos[2]+4,
     1,1,
     false,true
@@ -594,15 +619,15 @@ end
 }
 
 e={}
-e.new=function(cx,cy)
+e.new=function(cx,cy,col)
   local t={cx=cx,cy=cy}
   local pos=cell2mxy(cx,cy)
+  t.col=col or 14
   t.dv={0,0}
   t.mg=cell2idx(cx,cy)
   t.pos=pos
-  t.tk=0
   t.tm=45
-    
+  t.tk=flr(rnd(t.tm))
   t.path={cell2idx(cx,cy)}
   t.state="init"
   setmetatable(t,e)
@@ -774,7 +799,7 @@ update=function(t)
   
   local chk=cell2idx(p.cell[1],p.cell[2])
   if t.p[chk]==true then
-    sfx(1,1)
+    sfx(1,2)
     t.p[chk]=nil
   elseif t.p[chk]==false then
     sfx(0,1)
