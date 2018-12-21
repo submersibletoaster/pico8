@@ -2,11 +2,11 @@ pico-8 cartridge // http://www.pico-8.com
 version 16
 __lua__
 -- loop
-local g={}
---local p={2,1}
+local g={} -- tile graph
 p={}
 pickups={}
 enemies={}
+debug=false
 local d={8,6}
 local cam={0,0}
 local ct={0,0}
@@ -76,14 +76,13 @@ function _draw()
   pset(pos[1],pos[2],9)
     
 
-  drawpath(path,12)
 
-  for e in all(enemies) do
-    e:draw_debug()
+  if debug then
+    for e in all(enemies) do
+      e:draw_debug()
+    end
+    p:draw_debug()
   end
-  
-  p:draw_debug()
-
   -- blackout dark green  
   pal(3,0,1)
 end
@@ -404,10 +403,12 @@ local star_pal={
   13,12,15,13,7,7,7,7}
 }
 
+-- render one of the eye-cells
+-- as dark(pupil) the rest white
 eye_pal_idx={
- { {8,12},{9,7}, {10,7}, {11,7} },
- { {8,7},{9,12}, {10,7}, {11,7} },
- { {8,7},{9,7}, {10,12}, {11,7} },
+ { {8,1},{9,7}, {10,7}, {11,7} },
+ { {8,7},{9,1}, {10,7}, {11,7} },
+ { {8,7},{9,7}, {10,1}, {11,7} },
  { {8,7},{9,7}, {10,7}, {11,12} },
 }
 
@@ -653,7 +654,7 @@ draw_debug=function(t)
   print(t.tk,100,114,14)
 --]]
 
-  --drawpath(t.path,7)
+  drawpath(t.path,t.col)
 
 
 end
@@ -782,7 +783,10 @@ update=function(p)
     p.astep=1
   end
    
-   
+  
+  if btnp(5) then
+    debug=debug==false and true or false
+  end
 
 end,
 draw=function(t)
