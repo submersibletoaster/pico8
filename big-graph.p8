@@ -7,10 +7,10 @@ p={}
 pickups={}
 enemies={}
 ghosts={
- {col=8,home={16,13}},
+ {col=8,home={17,13}},
  {col=14,home={23,13}},
  {col=15,home={18,14}},
- {col=12,home={20,14}}
+ {col=12,home={21,14}}
 }
 debug=false
 local d={8,6}
@@ -49,7 +49,7 @@ prof_in("upd")
   end
   p:update()
 
-  if btnp(5) then
+  if btnp(4) then
     for e in all(enemies) do
       e.mode="h"
     end
@@ -67,21 +67,6 @@ prof_in("d_star")
   pal()
   fillp()
   
-  -- background
-  camera(cam[1],cam[2])
-  draw_stars(cam[1],cam[2],
-    4478,128,1
-  )
-  camera(cam[1]*1.25,cam[2]*1.25)
-  draw_stars(cam[1]*1.25,cam[2]*1.25,
-    8086,512,2
-  )
-  camera(cam[1]*1.5,cam[2]*1.5)
-  draw_stars(cam[1]*1.5,cam[2]*1.5,
-    13,2048,3
-  )
-prof_out("d_star")
-
 prof_in("d_map")  
   draw_map()
 prof_out("d_map")
@@ -112,14 +97,33 @@ function draw_stats()
 
 end
 
+function draw_starfield()
+prof_in("d_star")
+  -- background
+  camera(cam[1],cam[2])
+  draw_stars(cam[1],cam[2],
+    4478,128,1
+  )
+  camera(cam[1]*1.25,cam[2]*1.25)
+  draw_stars(cam[1]*1.25,cam[2]*1.25,
+    8086,512,2
+  )
+  camera(cam[1]*1.5,cam[2]*1.5)
+  draw_stars(cam[1]*1.5,cam[2]*1.5,
+    13,2048,3
+  )
+prof_out("d_star")
+end
+
 function draw_prof()
-  rect(1,1,100,3,7)
+ local width=50
+  rect(1,1,width,3,7)
   local n=1
   local col=1
   local coff=10
   for k,v in pairs(getprof()) do
-    v*=100
-    rect(n,1,n+v,3,coff+col)
+    v*=width
+    line(n,2,n+v,2,coff+col)
     print(k,4,coff+(col*8))
     col+=1
     n+=v
@@ -294,9 +298,16 @@ function map2graph()
   end
   return g
 end
+
+function magnitude(t)
+  local v=t[1]*t[1]
+         +t[2]*t[2]
+  return sqrt(v)
+end
 -->8
 -- pathfinding
-function astar(g,start,goal)
+function astar(g,start,goal,cri)
+  local cr_count=0
   local closed ={}
   local open = {start}
   local camefrom={}
@@ -317,6 +328,14 @@ function astar(g,start,goal)
     
     for n in all(g[cur]) do
       repeat
+      
+       cr_count+=1
+       if cri and cr_count>cri then
+         cr_count=0
+         printh("co-routine bailout")
+         yield()
+       end
+   
       
       -- already visited
       if has_value(closed,n) then
@@ -562,9 +581,14 @@ end
 
 -->8
 -- enemies
+local astar_gov=25
 local e_m={
 seek=function(t)
-    --local st = cell2idx(t.cx,t.cy)
+    -- already seeking
+    if t.cor then
+      return
+    end
+
     local gl
     if t.mode=="c" then
       gl = cell2idx(
@@ -577,10 +601,30 @@ seek=function(t)
       gl = t.home
     end
     
-    t.path = astar(g,t.mg,gl)
+    local cr=function()
+      t.path=astar(g,t.mg,gl,
+       astar_gov
+      )
+       
+    end
+    --t.path = astar(g,t.mg,gl)
+    t.cor=cocreate(cr)
 end,
-update=function(t,p)
-
+update=function(t)
+  if type(t.cor)=="thread" then
+    local ok
+    local err
+    ok,err=coresume(t.cor)
+    if ok then
+      if costatus(t.cor)=="dead" then
+        t.cor=nil
+        printh("finished seeking "..t.col)
+      end
+    else
+      printh("cor err: " .. err)
+      assert(ok)
+    end
+  end
   -- every tm ticks, 
   -- check path/target
   t.tk+=1
@@ -588,22 +632,39 @@ update=function(t,p)
     t:seek()
     t.tk=0
   end
+
+  local st_idx=cell2idx(t.cx,t.cy)
   
   t.mtk+=1
   if t.mtk>t.mtm then
     if not(t.mode=="h") then
       t.mode=t.mode == "c" and "l" or "c"
       sfx(2,1)
+    else
+      -- it we're at home
+      -- start chasing again
+      if st_idx==t.home then
+        t.mode="c"
+        sfx(2,1)
+      end
     end
     t.mtk=0
   end
 
-
+  -- go slow
   --if t.tk%2==0 then return end
-
-
-  local st_idx=cell2idx(t.cx,t.cy)
-  
+  if not(t.mode=="h") then
+   local hit={
+     abs(t.pos[1]-p.pos[1]),
+     abs(t.pos[2]-p.pos[2])
+   }
+   if magnitude(hit) < 5 then
+     t.mode="h"
+     sfx(3,1)
+     p:scores(100)
+     
+   end
+  end  
   local tgt_idx = t.mg
   local tgt = idx2cell(tgt_idx)  
   -- change dv to point to 
@@ -660,12 +721,19 @@ draw=function(t)
     gd[1], shl(gd[2],1)
   )
 
+  local sp
+  if t.mode=="h" then
+    sp = 65
+  else
+    sp = 64
+  end
+
   -- override col  
   pal(14,t.col)
   apply_idx_pal(
     eye_pal_idx[eye_idx]
   )
-  spr(64,t.pos[1]-4,t.pos[2]-4)
+  spr(sp,t.pos[1]-4,t.pos[2]-4)
   pal()
 end,
 draw_refl=function(t)
@@ -1099,3 +1167,4 @@ __sfx__
 000100000000006050090500e05012050151501a0501f05022150270502e050361500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000500001025013250172501b2501f25029250332500e2500f250162501b25020250262502c250332500000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000300003875038750387503875025750257502575025750107501075010750107501075010750107501075000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000500000355008150177503d55031550147500c550025500155000000000003d5003f5503c50023550000003e550000000000000000000000000000000000000000000000000000000000000000000000000000
