@@ -70,19 +70,19 @@ function _draw()
   
   draw_map()
   
-  --target
-  pos=cell2mxy(d[1],d[2])
-  circ(pos[1],pos[2],5,9)
-  pset(pos[1],pos[2],9)
-    
-
-
   if debug then
     for e in all(enemies) do
       e:draw_debug()
     end
     p:draw_debug()
   end
+  
+  camera()
+  pal()
+  palt()
+  p:draw_hud()
+
+  
   -- blackout dark green  
   pal(3,0,1)
 end
@@ -362,6 +362,8 @@ function has_value(t,v)
 end
 -->8
 -- world
+
+cam_slack=8
 function camchase(f,c,ct)
  local m = { f[1]-64, f[2]-64}
  if m[1] < 0 then m[1]=0 end
@@ -370,10 +372,10 @@ function camchase(f,c,ct)
  ct = m
  local vx = c[1] - ct[1]
  local vy = c[2] - ct[2]
- if abs(vx)> 16 then
+ if abs(vx)> cam_slack then
    vx -= shr(vx,4)
  end
- if abs(vy)> 16 then
+ if abs(vy)> cam_slack then
    vy -= shr(vx,4)
  end
  
@@ -382,8 +384,13 @@ function camchase(f,c,ct)
  --c[1] = flr(c[1])
  --c[2] = flr(c[2])
  
- 
 
+end
+
+function prright(s,x,y,col)
+  col=col or 7
+  local ox=x-(#s*4)
+  print(s,ox,y,col)
 end
 
 drk_pal={
@@ -805,6 +812,11 @@ draw_refl=function(t)
     t.pos[1]-4,t.pos[2]+4,
     1,1,
     p.flp,true
+  )
+end,
+draw_hud=function(t)
+  prright(tostr(t.score),
+    124,116,15
   )
 end,
 draw_debug=function(t)
