@@ -23,7 +23,6 @@ ghosts={
 debug=false
 local d={8,6}
 local cam={0,0}
-local ct={0,0}
 local cst="unknown"
 local edges={}
 local path={}
@@ -74,7 +73,7 @@ function _draw()
   pal()
   fillp()
   
-  draw_starfield()
+  --draw_starfield()
   
 prof_in("d_map")  
   draw_map()
@@ -435,27 +434,44 @@ function has_value(t,v)
 end
 -->8
 -- world
-
-cam_slack=8
-function camchase(f,c,ct)
+cam_adjust={0,0.25,0.5,1,3,8}
+cam_slack=32
+cam_step=8
+function camchase(f,c)
  local m = { f[1]-64, f[2]-64}
- if m[1] < 0 then m[1]=0 end
- if m[2] < 0 then m[2]=0 end
  
  ct = m
- local vx = c[1] - ct[1]
- local vy = c[2] - ct[2]
- if abs(vx)> cam_slack then
-   vx -= shr(vx,4)
- end
- if abs(vy)> cam_slack then
-   vy -= shr(vx,4)
+ local vx =
+  ( c[1] - ct[1] )
+ local vy =
+  ( c[2] - ct[2] )
+ local qx = flr(abs(vx/cam_step))
+ local qy = flr(abs(vy/cam_step))
+    
+ local mx=qx>=#cam_adjust and cam_adjust[#cam_adjust]
+       or cam_adjust[1+qx]
+ local my=qy>=#cam_adjust and cam_adjust[#cam_adjust]
+       or cam_adjust[1+qy]
+ if vx>0 then
+   c[1] -= mx
+ elseif vx<0 then
+   c[1] += mx
  end
  
- c[1] -= vx
- c[2] -= vy
- --c[1] = flr(c[1])
- --c[2] = flr(c[2])
+ if vy>0 then
+   c[2] -= my
+ elseif vy<0 then
+   c[2] += my
+ end
+ 
+ if c[1] <0 then
+   c[1]=0
+   printh("clamp-x")
+ end
+ if c[2] <0 then
+   c[2]=0
+   printh("clamp-y")
+ end
  
 
 end
