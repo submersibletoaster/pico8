@@ -170,8 +170,8 @@ prof_in("map-b")
 
   -- cell-size = 128/8
   
-  pal(5,4)
-  pal(2,4)
+  pal(5,0)
+  pal(2,0)
   
   palt(0,true)
   map(cx,cy,x,y,17,17)
@@ -180,6 +180,8 @@ prof_out("map-b")
 
 prof_in("refl")
 
+
+  pal()
   p:draw_refl()
   
   for e in all(enemies) do
@@ -900,6 +902,7 @@ draw_refl=function(t)
     gd[1], shl(gd[2],1)
   )
 
+  pal()
   apply_pal(drk_pal)
   pal(14,drk_pal[t.col+1])
   apply_idx_pal(
@@ -1331,7 +1334,10 @@ draw=function(t)
   spr(t.sp,t.pos[1]-4,t.pos[2]-5)
 end,
 draw_refl=function(t)
-  spr(t.sp,t.pos[1]-4,t.pos[2]+5,
+  pal()
+  apply_pal(drk_pal)
+  spr(t.sp,t.pos[1]-4,
+    t.pos[2]+3,
     1,1,
     false,true
   )
