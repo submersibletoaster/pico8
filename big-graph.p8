@@ -185,6 +185,9 @@ prof_in("refl")
   for e in all(enemies) do
     e:draw_refl()
   end
+  for b in all(bonuses) do
+    b:draw_refl()
+  end
   --pickups:draw_refl()
 
 prof_out("refl") 
@@ -525,7 +528,14 @@ eye_pal_idx={
  { {8,1},{9,7}, {10,7}, {11,7} },
  { {8,7},{9,1}, {10,7}, {11,7} },
  { {8,7},{9,7}, {10,1}, {11,7} },
- { {8,7},{9,7}, {10,7}, {11,12} },
+ { {8,7},{9,7}, {10,7}, {11,1} },
+}
+
+eye_pal_drk={
+ { {8,1},{9,13}, {10,13}, {11,13} },
+ { {8,13},{9,1}, {10,13}, {11,13} },
+ { {8,13},{9,13}, {10,1}, {11,13} },
+ { {8,13},{9,13}, {10,13}, {11,1} }, 
 }
 
 function apply_pal(p)
@@ -881,9 +891,20 @@ draw_refl=function(t)
   else
     sp = 64
   end
+  
+  local gd={
+   t.pos[1]<p.pos[1] and 1 or 0,
+   t.pos[2]<p.pos[2] and 1 or 0
+  }  
+  local eye_idx=1+ bxor(
+    gd[1], shl(gd[2],1)
+  )
 
   apply_pal(drk_pal)
   pal(14,drk_pal[t.col+1])
+  apply_idx_pal(
+    eye_pal_drk[eye_idx]
+  )
   
   spr(sp,t.pos[1]-4,t.pos[2]+4,
     1,1,
@@ -1308,6 +1329,12 @@ update=function(t,p)
 end,
 draw=function(t)
   spr(t.sp,t.pos[1]-4,t.pos[2]-5)
+end,
+draw_refl=function(t)
+  spr(t.sp,t.pos[1]-4,t.pos[2]+5,
+    1,1,
+    false,true
+  )
 end,
 hitbox=function(t)
   return {
