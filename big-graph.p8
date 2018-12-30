@@ -56,6 +56,7 @@ function _update()
 prof_in("upd")
   bonus()
   pickups:update()
+  flt:updateall()
   for e in all(enemies) do
     e:update(p)
   end
@@ -102,6 +103,10 @@ prof_in("d_hud")
   pal()
   palt()
   p:draw_hud()
+  
+  camera(cam[1],cam[2])
+  flt.drawall()
+
 prof_out("d_hud")
   
   -- blackout dark green  
@@ -1328,6 +1333,7 @@ update=function(t,p)
     p:scores(t.val)
     sfx(6,-1)
     del(bonuses,t)
+    flt.new(p.pos,t.val)
   end
 end,
 draw=function(t)
@@ -1382,6 +1388,47 @@ function bonus()
    local p=prize.new(starts[1+flr(rnd(#starts))])
    add(bonuses,p)
  end
+end
+
+-- floating score
+flt_all={}
+flt_m={
+update=function(t,p)
+  t.tk+=1
+  if t.tk>t.tm then
+    del(flt_all,t)
+  end
+  t.pos[2]-=0.5
+end,
+draw=function(t)
+  local col=t.tk%16
+  print(t.val,t.pos[1],t.pos[2],col)
+end,
+draw_refl=function(t)
+
+end,
+}
+flt={}
+flt.__index=flt_m
+flt.new=function(pos,val)
+  local t={}
+  t.pos={ pos[1], pos[2] }
+  t.val=val
+  t.tk=1
+  t.tm=50
+  setmetatable(t,flt)
+  add(flt_all,t)
+  return t
+end
+flt.updateall=function(p)
+  for t in all(flt_all) do
+    t:update(p)
+  end
+end
+flt.drawall=function()
+  for t in all(flt_all) do
+    t:draw()
+  end
 end
 __gfx__
 000aa000000aa00000000000000aa000000aa000000aa00000000000000aa0000000000000000000000aa00000077000000aa000000aa0000000000000000000
