@@ -1043,6 +1043,10 @@ update=function(t)
        local scores={200,400,800,1600}
        p:scores(scores[n_eaten])
        flt.new(p.pos,scores[n_eaten])
+       spritedots(64,
+         t.pos[1],t.pos[2],
+         nil,nil,{14,t.col}
+       )
      else
        p:dies(t)
      end
