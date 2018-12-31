@@ -24,7 +24,7 @@ function _update()
     end
   end
   if btnp(🅾️) then
-    spritedots(16,32,100)
+    spritedots(32,32,80,2,2)
   end
   --if btn(🅾️) then
   --  dots:update()
@@ -52,7 +52,7 @@ function _draw()
   profout=stat(1)-profin
   print(profout,80,120,7)
     if btn(🅾️) then
-     spr(16,32,100)
+     --spr(16,32,100)
    end
 end
 
@@ -202,12 +202,14 @@ dot.new=function(l,x,y,c,f)
   return t
 end
 
-function spritedots(s,x,y)
+function spritedots(s,x,y,sx,sy)
+ sx=sx or 1
+ sy=sy or 1
  local px=s%16
  local py=((s-px)/16)*8
  local d={}
- for iy=py,py+8 do  
-  for ix=px,px+8 do
+ for iy=py,py+(sy*8) do  
+  for ix=px,px+(sy*8) do
    local p=sget(ix,iy)
    if p~=0 then
     dot.new(50+rnd(100),
