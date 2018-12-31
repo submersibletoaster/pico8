@@ -27,6 +27,11 @@ local cst="unknown"
 local edges={}
 local path={}
 function _init()
+ -- particle constants
+ v_grav=v3d.new({x=0,y=0,z=-grav})
+ v_drag=v3d.new({x=1-drag,y=1-drag,z=1-drag})
+ dots=newdots()
+ 
  g=map2graph()
  st1=stars.new(4478,128,1)
  st2=stars.new(8086,512,2)
@@ -64,8 +69,9 @@ prof_in("upd")
     b:update(p)
   end
   p:update()
-
+  dots:update() -- may rely on camera?pget
   if btnp(4) then
+    p:dies(enemies[1])
     for e in all(enemies) do
       e.mode="h"
     end
@@ -184,11 +190,12 @@ prof_in("map-b")
 prof_out("map-b")
 
 prof_in("refl")
-
+  dots:pre_draw()
 
   pal()
   p:draw_refl()
-  
+  apply_pal(drk2_pal)
+  dots:draw_refl()
   for e in all(enemies) do
     e:draw_refl()
   end
@@ -227,6 +234,12 @@ prof_in("wall")
   map(cx,cy,x,y-1,17,17,l_walls)
   map(cx,cy,x,y-2,17,17,l_walls)
 prof_out("wall")
+  
+
+  pal()
+  camera(cam[1],cam[2])
+  dots:draw()
+
   
 end
 
@@ -516,6 +529,10 @@ drk_pal={
  0,0,1,1,2,1,5,6,2,4,9,3,1,1,2,5
 }
 
+drk2_pal={
+ 0,0,1,1,2,1,5,6,2,2,4,3,1,1,2,5
+}
+
 local star_cols={
  0,1,2,3,4,5,6,7,
  8,9,10,11,12,13,14,15
@@ -727,6 +744,209 @@ function maskspr(sp,msk)
    end
   end
   
+end
+
+--particle
+grav=0.05
+drag=0.03
+elast=0.75
+
+dots_m={
+  update=function(t)
+    for p in all(t) do
+      p:update()
+    end
+  end,
+  draw=function(t)
+    for p in all(t) do
+      p:draw()
+    end
+  end,
+  pre_draw=function(t)
+    for p in all(t) do
+      p:pre_draw()
+    end
+  end,
+  draw_refl=function(t)
+    for p in all(t) do
+      p:draw_refl()
+    end
+  end
+}
+local dts={}
+dts.__index=dots_m
+setmetatable(dts,dts)
+function newdots()
+  return dts
+end
+
+ease_in=5
+dot_m={
+update=function(t)
+  t.tk+=1
+  -- freeze first frame
+  if t.tk==1 then return end
+  local ease=1
+  if t.tk<ease_in then
+    ease=(t.tk)/ease_in
+  end
+  local v_ei=v3d.new({
+   x=ease,y=ease,z=ease
+  })
+  
+  if t.tk>t.l then
+    del(dts,t)
+    return
+  end
+  
+  -- bounce or fall
+  if t.lost~=true then
+   if t.pos.z<0 then
+     t.pos.z=-t.pos.z
+     t.f.z=-t.f.z*elast
+   end
+  end 
+
+  t.f=t.f*v_drag
+  t.f+= v_grav
+  
+  t.pos=t.pos+(t.f*v_ei)
+end,
+draw=function(t)
+   if t.lost==true then
+    if pget(t.pos.x,t.pos.y-t.pos.z)==3 then
+      pset(t.pos.x,
+           t.pos.y-t.pos.z,
+           t.c
+      )
+    end
+  else
+    pset(t.pos.x,
+     t.pos.y-t.pos.z,
+     t.c
+    )
+  end
+end,
+pre_draw=function(t)
+  -- lost if passed thru
+  -- the green mask floor
+  local col=pget(t.pos.x,t.pos.y)
+  if col==3 
+    and t.pos.z<0
+    then
+    t.lost=true
+    --t.c=8
+  end
+  -- wall colors magic numbers
+  -- screen space wall bounce
+  
+  if (col==1 or col==12) 
+    and t.pos.z < 3 then
+    --t.c=11
+    if abs(t.f.x) > abs(t.f.y) then
+      t.f.x= -t.f.x
+    else
+      t.f.y= -t.f.y
+    end
+  end
+  
+  
+end,
+draw_refl=function(t)
+  --refl
+  -- not drawn over green mask
+  if pget(t.pos.x,t.pos.y+t.pos.z)~=3 then
+    if t.lost~=true then
+     pset(t.pos.x,t.pos.y+t.pos.z+1,
+    t.c)
+    end
+  end  
+end
+}  
+dot={}
+dot.__index=dot_m
+dot.new=function(l,x,y,c,f)
+  -- avoid oom
+  if #dots>100 then
+    return nil
+  end
+  local force=f or v3d.new(
+    {x=(rnd(20)-10)/5,
+     y=(rnd(20)-10)/5,
+     z=rnd(20)/10}
+  )
+  local pos=v3d.new({
+    x=x or rnd(128),
+    y=y or rnd(128),
+    z=1
+  })
+  local t={
+   f=force,
+   pos=pos,
+   l=l or 100,
+   tk=0,
+   c=c or 7,
+   lost=false
+  }
+  setmetatable(t,dot)
+  add(dts,t)
+  return t
+end
+
+function spritedots(s,x,y,sx,sy)
+ sx=sx or 1
+ sy=sy or 1
+ local px=(s%16)*8
+ local py=(flr(s/16))*8
+ printh("sprite~ px: "..px.." py:  "..py)
+ for iy=py,py+(sy*8) do  
+  for ix=px,px+(sx*8) do
+   local p=sget(ix,iy)
+   if p~=0 then
+    dot.new(50+rnd(100),
+     x+ix-px,y+iy-py-8,
+     p
+     ,v3d.new({x=rnd(4)-2,y=rnd(2)-2,z=rnd(2)-0.5})
+    )
+    dot.new(25+rnd(100),
+      x+ix-px,y+iy-iy-6,
+      p
+      ,v3d.new({x=rnd(4)-2,y=rnd(2)-1,z=rnd(2)-0.5})
+    )  
+   end
+   --printh(ix..","..iy.." : "..p)
+  end
+ end
+end
+-->8
+-- vec
+v3d={
+__add=function(a,b)
+  local t={
+   x=a.x+b.x,
+   y=a.y+b.y,
+   z=a.z+b.z,
+  }
+  return v3d.new(t)
+end,
+__sub=function(a,b)
+
+end,
+__mul=function(a,b)
+  local t={
+   x=a.x*b.x,
+   y=a.y*b.y,
+   z=a.z*b.z,
+  }
+  return v3d.new(t)
+
+end
+}
+v3d.new=function(t)
+  --assert(type(t)=="table")
+  local v={x=t.x,y=t.y,z=t.z}
+  setmetatable(v,v3d)
+  return v
 end
 
 -->8
@@ -1102,6 +1322,15 @@ dies=function(t,e)
 
   t:scores(-1000)
 printh("caught by " .. e.col )
+
+  printh("dies with sprite: "..
+    t.anim[t.astep] ..
+    " at " .. t.pos[1] .."," .. t.pos[2]
+  )
+  spritedots(t.anim[t.astep],
+    t.pos[1]-4,t.pos[2]+8
+  )
+  
   local start={}
   for k,v in pairs(g) do
     if #v>0 then
