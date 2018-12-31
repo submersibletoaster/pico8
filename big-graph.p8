@@ -1034,7 +1034,15 @@ update=function(t)
      if p.pwr then
        t.mode="h"
        sfx(3,1)
-       p:scores(100)
+       local n_eaten=0
+       for e in all(enemies) do
+         if e.mode=="h" then
+           n_eaten+=1
+         end
+       end
+       local scores={200,400,800,1600}
+       p:scores(scores[n_eaten])
+       flt.new(p.pos,scores[n_eaten])
      else
        p:dies(t)
      end
@@ -1546,7 +1554,7 @@ pickup.new = function()
   return t
 end
 
-
+-- sprite and score
 prize_val={
  {72,100},
  {73,300},
