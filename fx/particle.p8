@@ -31,6 +31,8 @@ function _update()
   --end
   --if tk%8==0 then
     dots:update()
+      profout=stat(1)-profin
+
   --end
 end
 
@@ -49,7 +51,6 @@ function _draw()
   dots:draw()
   
   print(#dots,10,120,7)
-  profout=stat(1)-profin
   print(profout,80,120,7)
     if btn(🅾️) then
      --spr(16,32,100)
@@ -101,7 +102,7 @@ function newdots()
   return dts
 end
 
-ease_in=25
+ease_in=50
 dot_m={
 update=function(t)
   t.tk+=1
@@ -232,9 +233,9 @@ end
 v3d={
 __add=function(a,b)
   local t={
-   x=a["x"]+b["x"],
-   y=a["y"]+b["y"],
-   z=a["z"]+b["z"],
+   x=a.x+b.x,
+   y=a.y+b.y,
+   z=a.z+b.z,
   }
   return v3d.new(t)
 end,
@@ -243,16 +244,16 @@ __sub=function(a,b)
 end,
 __mul=function(a,b)
   local t={
-   x=a["x"]*b["x"],
-   y=a["y"]*b["y"],
-   z=a["z"]*b["z"],
+   x=a.x*b.x,
+   y=a.y*b.y,
+   z=a.z*b.z,
   }
   return v3d.new(t)
 
 end
 }
 v3d.new=function(t)
-  assert(type(t)=="table")
+  --assert(type(t)=="table")
   local v={x=t.x,y=t.y,z=t.z}
   setmetatable(v,v3d)
   return v
