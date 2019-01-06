@@ -235,16 +235,18 @@ prof_in("wall")
   palt(5,true)
   palt(2,true)
 
---[[
+
   map(cx,cy,x,y,17,17,l_walls)
   map(cx,cy,x,y-1,17,17,l_walls)
   map(cx,cy,x,y-2,17,17,l_walls)
---]]
 
+
+--[[
   map(cx,cy,x,y+1,17,17,l_walls)
   map(cx,cy,x,y+2,17,17,l_walls)
   map(cx,cy,x+1,y+3,17,17,l_walls)
   map(cx,cy,x+1,y+4,17,17,l_walls)
+--]]
 
 prof_out("wall")
   
