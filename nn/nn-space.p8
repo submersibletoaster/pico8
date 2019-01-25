@@ -9,6 +9,7 @@ function _init()
  net= nn:new({3,5,3})
  net:init_neurons()
  net:init_weights()
+ 
 end
 
 function _update60()
@@ -22,6 +23,8 @@ function _draw()
  w:draw()
  pl:draw()
  en:draw()
+ print(pl.h,10,10,1)
+ print(pl.score,10,20,1)
 end
 -->8
 -- player
@@ -38,21 +41,22 @@ function player:new(arg)
    h=arg.h or 0.5,
    t=arg.t or 0,
    dx=0,
-   dy=0
+   dy=0,
+   score=0,
  }
  self.__index=self
  setmetatable(this,self)
  return this
 end
 
-function player:update()
+function player:update(e)
   if btn(0) then
     self.h+=0.01
   elseif btn(1) then
     self.h-=0.01
   end
-  if self.h > 1 or self.h < -1 then
-    self.h=1
+  if self.h > 1 or self.h < 0 then
+    self.h=1-self.h
   end
   
   if btn(2) then
@@ -60,10 +64,10 @@ function player:update()
   elseif btn(3) then
     self.t-=0.01
   end
-  
+
+  -- movement  
   self.dx+=cos(self.h)*self.t
   self.dy+=sin(self.h)*self.t
-  -- movement
   self.x+=self.dx
   self.y+=self.dy
   
@@ -80,6 +84,11 @@ function player:update()
   if self.y < 0 or self.y > 128 then
     self.y-= self.dy
     self.dy= -self.dy
+  end
+
+  -- points for contact
+  if collide(self,e) then
+    self.score+=0.01
   end
   
 end
@@ -104,7 +113,7 @@ function enemy:new(pl)
     x=pl.x+cos(d)*r,
     y=pl.y+sin(d)*r,
     h=rnd(1),
-    sz=6,
+    s=6,
     dx=0,
     dy=0
   }
@@ -119,7 +128,7 @@ end
 
 function enemy:draw()
   fillp()
-  circfill(self.x,self.y,6,15)
+  circfill(self.x,self.y,self.s,15)
 end
 -->8
 ------------------------------------------------------------
@@ -388,44 +397,6 @@ end
 
 --------------------------------------------------------
 
--- +------+
--- | ball |
--- +------+
-
-ball={} 
-
-function ball:new(x,y)
-    local this={}
-
-    this.x=x
-    this.y=y
-    
-    this.a=0.75
-    this.spd=0.5
-
-    self.__index=self
-    setmetatable(this,self)
-    
-    return this
-end
-
-function ball:update()
-    self.x+=sin(self.a)*self.spd
-    self.y+=cos(self.a)*self.spd
-end
-
-function ball:draw()
-    line(self.x,self.y,self.x+sin(self.a)*8,self.y+cos(self.a)*8,2)
-    circfill(self.x,self.y,3,8) 
-end
-
-function ball:add_ang(a)
-    self.a+=a
-end
-
-function ball:set_ang(a)
-    self.a=a
-end
 -->8
 -- world
 world={}
@@ -444,3 +415,45 @@ function world:draw()
   fillp(0b1010010110100101)
   rect(0,0,127,127,1+shl(13,4))
 end
+
+function collide(p1,p2)
+  local vx=p1.x-p2.x
+  local vy=p1.y-p2.y
+  local d=sqrt( (vx*vx)+(vy*vy) )
+  if d <= (p1.s+p2.s) then
+    return true
+  else
+    return false
+  end
+  
+end
+-->8
+-- bot
+bot={}
+function bot:new(arg)
+ arg=arg==nil and {} or arg
+ local this={
+   x=arg.x or 64,
+   y=arg.y or 64,
+   s=arg.s or 5,
+   h=arg.h or 0.5,
+   t=arg.t or 0,
+   dx=0,
+   dy=0,
+   score=0,
+ }
+ self.__index=self
+ setmetatable(this,self)
+ return this
+end
+
+function bot:draw()
+ fillp()
+ line(self.x,self.y,
+   self.x+cos(self.h)*(self.s+2),
+   self.y+sin(self.h)*(self.s+2),
+   8
+ )
+ circfill(self.x,self.y,self.s,10)
+end
+
