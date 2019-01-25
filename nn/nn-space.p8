@@ -3,16 +3,28 @@ version 16
 __lua__
 -- loop
 function _init()
+ printh("game start")
  w= world:new()
- pl= player:new()
- en= enemy:new(pl)
- net= nn:new({3,5,3})
- net:init_neurons()
- net:init_weights()
+ pl= player:new({x=32,y=32,col=15})
+ en= enemy:new({x=96,y=96})
+ t=0
  
 end
 
 function _update60()
+  t+=1
+  -- kill
+  if btnp(4) then
+    printh("kill bot")
+    en=enemy:new({x=96,y=96})
+  end
+  if btnp(5) then
+    printh("save network + mutate")
+    local nxt = nn:make_copy_of(en.net)
+    nxt:mutate()
+    en=enemy:new({x=96,y=96,net=nxt})
+  end
+  
   w:update()
   pl:update(en)
   en:update(pl)
@@ -23,16 +35,50 @@ function _draw()
  w:draw()
  pl:draw()
  en:draw()
+ en.net:draw(80,10,40,40)
+
+
  print(pl.h,10,10,1)
  print(pl.score,10,20,1)
 end
+
+--- 
+function inherits(mt)
+ local nc={}
+ local nc_mt={ __index = nc }
+ 
+ if mt then
+   setmetatable(nc, { __index=mt })
+   nc.super = function()
+     return mt
+   end
+ end
+ 
+ 
+ return nc  
+end
+
+function dist(p1,p2)
+   return sqrt(
+     (p1.x-p2.x)^2
+     +
+     (p1.y-p2.y)^2
+   )
+end
+
+function avg(t)
+  local a=0
+  foreach(t,function(v)
+    a+=v
+   end
+  )
+  return a/#t
+end
 -->8
--- player
-
-
-
-player={}
-function player:new(arg)
+-- bot
+bot={}
+function bot:new(arg)
+ printh("new bot")
  arg=arg==nil and {} or arg
  local this={
    x=arg.x or 64,
@@ -40,31 +86,45 @@ function player:new(arg)
    s=arg.s or 5,
    h=arg.h or 0.5,
    t=arg.t or 0,
+   col=arg.col or flr(1+rnd(14)),
    dx=0,
    dy=0,
    score=0,
+   lt=0,
  }
  self.__index=self
  setmetatable(this,self)
+ self:init(arg)
  return this
 end
 
-function player:update(e)
-  if btn(0) then
-    self.h+=0.01
-  elseif btn(1) then
-    self.h-=0.01
-  end
-  if self.h > 1 or self.h < 0 then
-    self.h=1-self.h
-  end
-  
-  if btn(2) then
-    self.t+=0.01
-  elseif btn(3) then
-    self.t-=0.01
-  end
+function bot:init(arg)
 
+end
+
+function bot:control(e)
+  assert(false,"override :control in subclass")
+end
+
+function bot:update(p2,w)
+  self:physics(p2,w)
+  self:control(p2,w)
+
+end
+
+function bot:draw()
+ fillp()
+ line(self.x,self.y,
+   self.x+cos(self.h)*(self.s+2),
+   self.y+sin(self.h)*(self.s+2),
+   8
+ )
+ circfill(self.x,self.y,self.s,self.col)
+end
+
+-- requires enemy passed
+function bot:physics(e)
+  self.lt+=1
   -- movement  
   self.dx+=cos(self.h)*self.t
   self.dy+=sin(self.h)*self.t
@@ -78,11 +138,11 @@ function player:update(e)
   
   -- boundary
   if self.x < 0 or self.x > 128 then
-    self.x-= self.dx
+    self.x-= self.dx*3
     self.dx=-self.dx
   end
   if self.y < 0 or self.y > 128 then
-    self.y-= self.dy
+    self.y-= self.dy*3
     self.dy= -self.dy
   end
 
@@ -92,47 +152,89 @@ function player:update(e)
   end
   
 end
-
-function player:draw()
- fillp()
- line(self.x,self.y,
-   self.x+cos(self.h)*(self.s+2),
-   self.y+sin(self.h)*(self.s+2),
-   8
- )
- circfill(self.x,self.y,self.s,10)
-
-end
 -->8
 -- enemies
-enemy={}
-function enemy:new(pl)
-  local d=rnd(1)
-  local r=32+rnd(32)
-  local this={
-    x=pl.x+cos(d)*r,
-    y=pl.y+sin(d)*r,
-    h=rnd(1),
-    s=6,
-    dx=0,
-    dy=0
-  }
-  self.__index=self
-  setmetatable(this,self)
-  return this
+enemy=inherits(bot)
+
+function enemy:init(arg)
+  if arg.net then
+    self.net = arg.net
+  else
+    local net=nn:new({3,5,3})
+    net:init_neurons()
+    net:init_weights()
+    self.net=net
+  end
+  
 end
+function enemy:control(p)
+  -- where is player
+--  local vx=self.x-p.x
+--  local vy=self.y-p.y
 
-function enemy:update()
+  local vx=p.x-self.x
+  local vy=p.y-self.y
 
+
+  local h=atan2(vx,vy)
+  local d=dist(self,p)/128
+  local cv=d/dist({x=0,y=0},
+    {x=self.dx,y=self.dy}
+  )
+  
+  self.th=h
+  
+  local i={
+   1.0-(abs(self.h-h)*4),cv,d  
+  }
+  self.i = i
+  local out=self.net:feed_forward(i)
+  
+  --
+  local dec=get_class(out)
+  if dec==1 then
+    self.h+=0.01
+  elseif dec==2 then
+    self.h-=0.01
+  elseif dec==3 then
+    -- don't turn
+  end
+  --
+  
+  self.t+=0.0025
+  
+  local fit={
+   1.0 - (abs(h-self.h)*4) ,
+   1.0 - d  
+  }
+  self.fit = fit 
+  self.net:setfit(avg(self.fit))
+   
 end
 
 function enemy:draw()
-  fillp()
-  circfill(self.x,self.y,self.s,15)
-end
--->8
-------------------------------------------------------------
+  self:super().draw(self)
+  print(self.net:getfit(),10,100,self.col)
+  line(self.x,self.y,
+  	self.x+cos(self.th)*10,
+  	self.y+sin(self.th)*10,
+  	11
+  )
+  print(self.i[1],90,90)
+  print(self.i[2],90,100)
+  print(self.i[3],90,110)
+  
+  print(self.fit[1],60,90)
+  print(self.fit[2],60,100)
+  print(self.fit[3],60,110)
 
+end
+
+-->8
+-- ff nn
+
+-- palette used by network
+heat_pal={1,2,8,14,7}
 -- +-------+
 -- | tools |
 -- +-------+
@@ -284,8 +386,8 @@ function nn:mutate()
         for j=1,#self.weights[i] do
          for k=1,#self.weights[i][j] do
           -- we get weight value and random number
-            w=self.weights[i][j][k]
-            r=rnd(100)
+            local w=self.weights[i][j][k]
+            local r=rnd(100)
             
             -- depending on a random num we choose a mutation
             if r<=2 then
@@ -428,32 +530,30 @@ function collide(p1,p2)
   
 end
 -->8
--- bot
-bot={}
-function bot:new(arg)
- arg=arg==nil and {} or arg
- local this={
-   x=arg.x or 64,
-   y=arg.y or 64,
-   s=arg.s or 5,
-   h=arg.h or 0.5,
-   t=arg.t or 0,
-   dx=0,
-   dy=0,
-   score=0,
- }
- self.__index=self
- setmetatable(this,self)
- return this
+-- player
+
+
+
+player=inherits(bot)
+
+
+
+function player:control(e)
+  if btn(0) then
+    self.h+=0.01
+  elseif btn(1) then
+    self.h-=0.01
+  end
+  if self.h > 1 or self.h < 0 then
+    self.h=1-self.h
+  end
+  
+  if btn(2) then
+    self.t+=0.01
+  elseif btn(3) then
+    self.t-=0.01
+  end
+
 end
 
-function bot:draw()
- fillp()
- line(self.x,self.y,
-   self.x+cos(self.h)*(self.s+2),
-   self.y+sin(self.h)*(self.s+2),
-   8
- )
- circfill(self.x,self.y,self.s,10)
-end
 
