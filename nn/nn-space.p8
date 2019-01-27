@@ -2,11 +2,14 @@ pico-8 cartridge // http://www.pico-8.com
 version 16
 __lua__
 -- loop
+
+maxt=150
+best=nil
 function _init()
  printh("game start")
  w= world:new()
  pl= player:new({x=32,y=32,col=15})
- en= enemy:new({x=96,y=96})
+ en= enemy:new({x=96})
  t=0
  
 end
@@ -16,13 +19,25 @@ function _update60()
   -- kill
   if btnp(4) then
     printh("kill bot")
-    en=enemy:new({x=96,y=96})
+    en=enemy:new({x=96})
   end
   if btnp(5) then
-    printh("save network + mutate")
-    local nxt = nn:make_copy_of(en.net)
-    nxt:mutate()
-    en=enemy:new({x=96,y=96,net=nxt})
+    printh("mutate generation")
+    en=enemy:new({x=96,
+     net=nn:make_copy_of(best)
+     })
+    en.net:mutate()
+  end
+  if en.lt>maxt then
+    if best == nil or best:getfit() < en.net:getfit() then
+      best = en.net
+    end
+      en=enemy:new({
+       x=96,
+       net=nn:make_copy_of(best)
+      })
+      en.net:mutate()
+ 
   end
   
   w:update()
@@ -38,8 +53,10 @@ function _draw()
  en.net:draw(80,10,40,40)
 
 
- print(pl.h,10,10,1)
- print(pl.score,10,20,1)
+ --print(pl.h,10,10,1)
+ if best ~= nil then
+   print(best:getfit(),10,20,8)
+ end
 end
 
 --- 
@@ -81,16 +98,17 @@ function bot:new(arg)
  printh("new bot")
  arg=arg==nil and {} or arg
  local this={
-   x=arg.x or 64,
-   y=arg.y or 64,
+   x=arg.x or rnd(127),
+   y=arg.y or rnd(127),
    s=arg.s or 5,
-   h=arg.h or 0.5,
+   h=arg.h or rnd(1.0),
    t=arg.t or 0,
    col=arg.col or flr(1+rnd(14)),
    dx=0,
    dy=0,
    score=0,
    lt=0,
+   tagged=false,
  }
  self.__index=self
  setmetatable(this,self)
@@ -146,8 +164,13 @@ function bot:physics(e)
     self.dy= -self.dy
   end
 
+  if self.h > 1 or self.h < 0 then
+    self.h=1-self.h
+  end
+
   -- points for contact
   if collide(self,e) then
+    self.tagged=true
     self.score+=0.01
   end
   
@@ -166,50 +189,75 @@ function enemy:init(arg)
     self.net=net
   end
   
+  -- previous distance to player
+  self.pd  = 90
+  
 end
 function enemy:control(p)
   -- where is player
---  local vx=self.x-p.x
---  local vy=self.y-p.y
 
   local vx=p.x-self.x
   local vy=p.y-self.y
-
-
   local h=atan2(vx,vy)
-  local d=dist(self,p)/128
-  local cv=d/dist({x=0,y=0},
-    {x=self.dx,y=self.dy}
+  local d=dist(self,p)
+  -- moving closer >0
+  local dv=self.pd-d
+  
+  -- angle distance
+  local hv=h-self.h
+  if hv>0.5 then hv-=0.5 end
+  if hv<-0.5 then hv+=0.5 end
+  
+  
+  local cv=min(
+    dist({x=0,y=0},
+         {x=self.dx,y=self.dy}
+    ), 128 
   )
   
   self.th=h
+  self.pd=d
   
   local i={
-   1.0-(abs(self.h-h)*4),cv,d  
+   0.5+( dv*10.0) ,
+   --dv,
+   d/181.0,
+   hv
   }
   self.i = i
   local out=self.net:feed_forward(i)
   
-  --
+  --[[
   local dec=get_class(out)
   if dec==1 then
     self.h+=0.01
   elseif dec==2 then
     self.h-=0.01
   elseif dec==3 then
-    -- don't turn
+    -- don't turn -boost
+    self.t+=0.01
   end
   --
+  self.t+=0.001
   
-  self.t+=0.0025
-  
+  -- closer in least time
+  -- pointing the right way
   local fit={
-   1.0 - (abs(h-self.h)*4) ,
-   1.0 - d  
+   (181-d) / self.lt,
+   1.0-(2.0*abs(hv)),
+   self.score,
   }
   self.fit = fit 
   self.net:setfit(avg(self.fit))
    
+end
+
+function enemy:mutate() 
+ local nxt = nn:make_copy_of(en.net)
+ nxt:mutate()
+ self.net=nxt
+ self.x =rnd(128)
+ self.y =rnd(128)
 end
 
 function enemy:draw()
@@ -220,14 +268,14 @@ function enemy:draw()
   	self.y+sin(self.th)*10,
   	11
   )
-  print(self.i[1],90,90)
-  print(self.i[2],90,100)
-  print(self.i[3],90,110)
+  print(self.i[1],100,100)
+  print(self.i[2],100,108)
+  print(self.i[3],100,116)
   
-  print(self.fit[1],60,90)
-  print(self.fit[2],60,100)
-  print(self.fit[3],60,110)
-
+  print(self.fit[1],60,100)
+  print(self.fit[2],60,108)
+  print(self.fit[3],60,116)
+  print(self.lt,80,112,13)
 end
 
 -->8
@@ -544,9 +592,7 @@ function player:control(e)
   elseif btn(1) then
     self.h-=0.01
   end
-  if self.h > 1 or self.h < 0 then
-    self.h=1-self.h
-  end
+
   
   if btn(2) then
     self.t+=0.01
@@ -557,3 +603,26 @@ function player:control(e)
 end
 
 
+-->8
+-- +---------------+
+-- | usage example |
+-- +---------------+
+
+-- function _init()
+--  layers={4,5,5,2}
+--  net=nn:new(layers)
+--  net:init_neurons()
+--  net:init_weights()
+-- end
+
+-- function _update()
+--  input={0.2,0.5,0.4,0.9}
+--  output=net:feed_forward(input)
+--  
+--  fit=1 -- or some other value
+--  net:addfit(fit)
+--
+--		if condition then
+--   net:mutate()
+--  end
+-- end
