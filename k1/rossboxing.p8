@@ -2,17 +2,26 @@ pico-8 cartridge // http://www.pico-8.com
 version 18
 __lua__
 --
+theta=0
 
-//function _update()
-
-
+function _update()
+  if btnp(1) then
+    theta+=0.01
+  end
+  
+  if btnp(2) then
+    theta-=0.01
+  end
+  
+  
+end
 
 function _draw()
   cls()
   dr_bg()
-  
-  dr_player(1,{x=40,y=24})
-  dr_player(2,{x=80,y=30},true)
+  dr_cube()
+  --dr_player(1,{x=40,y=24})
+  --dr_player(2,{x=80,y=30},true)
   
 end
 -->8
@@ -50,6 +59,58 @@ function dr_player(n,pos,flp)
   
   spr(pz[n].hd,
     pos.x,pos.y,2,2,flp)
+end
+-->8
+-- rendering
+x=1
+y=2
+z=3
+
+cube={
+  {-20,-20,-20},
+  {20,-20,-20},
+  {20,-20,20},
+  {-20,-20,20},
+  {-20,20,20},
+  {-20,20,-20},
+  {20,20,-20},
+  {20,20,20}
+}
+
+function rot3d(nodes,th)
+  print(nodes,5,40,5)
+  sin_t = sin(th)
+  cos_t = cos(th)
+  
+--  for n = 1, #nodes do
+--   r = nodes[n]
+
+--   r[x] = r[x] * cos_t - r[z] * sin_t;
+--   r[y] = r[z] * cos_t + r[x] * sin_t;
+--  end  
+  
+end
+
+sqrt2 = sqrt(2)
+sqrt6 = sqrt(6)
+
+function proj2d(vec)
+local  r={}
+ r[x] = ( vec[x]-vec[z])/sqrt2;
+ r[y] = (vec[x]+2*vec[y]+vec[z])/sqrt6;
+ return r
+end
+
+function dr_cube()
+  camera(-32,-42)
+  proj={}
+
+  for n = 1,#cube do
+    local r = proj2d(cube[n])
+    proj[n] = r
+    pset(r[x],r[y],10)
+  end
+
 end
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
