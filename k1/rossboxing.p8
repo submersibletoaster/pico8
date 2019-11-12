@@ -4,12 +4,12 @@ __lua__
 --
 theta=0
 
-function _update()
-  if btnp(1) then
+function _update60()
+  if btn(2) then
     theta+=0.01
   end
   
-  if btnp(2) then
+  if btn(3) then
     theta-=0.01
   end
   
@@ -77,18 +77,18 @@ cube={
   {20,20,20}
 }
 
-function rot3d(nodes,th)
-  print(nodes,5,40,5)
+function rot3d(node,th)
+
   sin_t = sin(th)
   cos_t = cos(th)
   
---  for n = 1, #nodes do
---   r = nodes[n]
-
---   r[x] = r[x] * cos_t - r[z] * sin_t;
---   r[y] = r[z] * cos_t + r[x] * sin_t;
---  end  
-  
+  local r={}
+  r[x] = (node[x] * cos_t)
+          - (node[z] * sin_t);
+  r[z] = (node[z] * cos_t) 
+          + (node[x] * sin_t);
+  r[y] = node[y]
+  return r  
 end
 
 sqrt2 = sqrt(2)
@@ -106,7 +106,11 @@ function dr_cube()
   proj={}
 
   for n = 1,#cube do
-    local r = proj2d(cube[n])
+    local r = proj2d(
+      rot3d(
+        cube[n], theta
+      )
+      )
     proj[n] = r
     pset(r[x],r[y],10)
   end
