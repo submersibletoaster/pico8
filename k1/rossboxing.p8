@@ -3,16 +3,62 @@ version 18
 __lua__
 --
 theta=0
+gamma=0
+beta=0
+
+dt=0
+dg=0
+db=0
+
+str=0.1
 
 function _update60()
-  if btn(2) then
-    theta+=0.01
+  if btnp(0) then
+    --theta+=0.01
+    dt=str
   end
   
-  if btn(3) then
-    theta-=0.01
+  if btnp(1) then
+    --theta-=0.01
+    dt=-str
   end
   
+  if btnp(2) then
+    --gamma+=0.01
+    dg=str
+  end
+  if btnp(3) then
+    -- gamma-=0.01
+    dg=-str
+  end
+  
+  if btnp(4) then
+    db=str
+  end
+  if btnp(5) then
+    db=-str
+  end
+  
+  dt=damp(dt)
+  dg=damp(dg)
+  db=damp(db)
+  
+  theta+=dt
+  gamma+=dg
+  beta+=db
+  
+  
+  
+  
+end
+
+function damp(v)
+  local n = (1-sqrt(1+abs(v))) * sgn(v)
+  return  v+n
+end
+
+function spring(p,r,k)
+  k = k or 0.5
   
 end
 
@@ -20,9 +66,13 @@ function _draw()
   cls()
   dr_bg()
   dr_cube()
+  camera()
   --dr_player(1,{x=40,y=24})
   --dr_player(2,{x=80,y=30},true)
-  
+  print(dt,10,60)
+  print(dg,10,70)
+  print(db,10,80)
+  print(stat(1),40,80,5)
 end
 -->8
 -- scenery
@@ -77,7 +127,7 @@ cube={
   {20,20,20}
 }
 
-function rot3d(node,th)
+function rot3dy(node,th)
 
   sin_t = sin(th)
   cos_t = cos(th)
@@ -89,6 +139,30 @@ function rot3d(node,th)
           + (node[x] * sin_t);
   r[y] = node[y]
   return r  
+end
+
+function rot3dx(node,g)
+  sin_g = sin(g)
+  cos_g = cos(g)
+  local r={}
+  r[x] = node[x]
+  r[y] = (node[y]*cos_g)
+          - (node[z]*sin_g)
+  r[z] = (node[z] * cos_g)
+          + (node[y] * sin_g)
+  return r
+end
+
+function rot3dz(node,g)
+  sin_g = sin(g)
+  cos_g = cos(g)
+  local r={}
+  r[z] = node[z]
+  r[y] = (node[y]*cos_g)
+         - (node[x]*sin_g)
+  r[x] = (node[x]*cos_g)
+         + (node[y]*sin_g)
+  return r
 end
 
 sqrt2 = sqrt(2)
@@ -107,12 +181,17 @@ function dr_cube()
 
   for n = 1,#cube do
     local r = proj2d(
-      rot3d(
+      rot3dz(
+       rot3dy(
         cube[n], theta
+       ),
+       beta
       )
-      )
+    )
     proj[n] = r
+    --line(r[x],r[y],5)
     pset(r[x],r[y],10)
+    
   end
 
 end
